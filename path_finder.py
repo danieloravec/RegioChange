@@ -1,11 +1,9 @@
-import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 import datetime
 import time
 
 import routes
-from dates import Dates
 
 
 class PathFinder:
@@ -22,6 +20,7 @@ class PathFinder:
             0
         )
         self.max_waiting_time = _max_waiting_time
+        self.last_arrival = self.date
 
     def find_path(self):
         source_id = routes.STATION_CODES[self.source]
@@ -59,7 +58,6 @@ class PathFinder:
         tarif = 'REGULAR'  # TODO let user choose tarif. [UPDATE -> is it really necessary?]
         driver = webdriver.Firefox()  # TODO let user choose browser
         search_counter = 1
-        partial_arrival = None
         while where != target_index:
             for partial_target in range(where + 1, target_index + 1):
                 url = self.build_url(
@@ -67,25 +65,39 @@ class PathFinder:
                 )
                 search_counter += 1
                 driver.get(url)
-                time.sleep(1)
+                time.sleep(2)
                 results = driver.execute_script("return document.documentElement.innerHTML")
                 soup = BeautifulSoup(results, 'html.parser')
                 found = False
-
-                # full = results.find('full')
-                # free = results.find('free')
-                # if full == -1 or free < full:
-                #     for _ in soup.find_all('div', {'class': 'free'}):
-                #         found = True
-                #         break
+                next_day = False
+                prev_train_departure = [0, 0]  # [hours, minutes]
+                current_date = self.date
 
                 for train in soup.find_all('div', {'class': 'free'}):
                     departure = train.find('div', {'class': 'col_depart'}).string
-                    if dater.earlier(last_arrival, departure):
-                        waiting_time = dater.difference(last_arrival, departure)
-                        if waiting_time <= self.max_waiting_time:
-                            found = True
-                            partial_arrival = train.find('div', {'class': 'col_arival'}).string
+                    train_departure = [int(t) for t in departure.split(':')]
+                    # Crossing to next day, or just earlier train that day?
+                    if train_departure[0] < prev_train_departure[0] or\
+                            (train_departure[0] == prev_train_departure[0] and train_departure[1] < prev_train_departure[1]):
+                        if next_day:
+                            current_date += datetime.timedelta(days=1)
+                        else:
+                            next_day = True
+
+                    departure = datetime.datetime(
+                        current_date.year,
+                        current_date.month,
+                        current_date.day,
+                        train_departure[0],
+                        train_departure[1],
+                        0
+                    )
+                    if self.last_arrival <= departure and\
+                            self.minutes(departure - self.last_arrival) <= self.max_waiting_time:
+                        found = True
+                        arrival = train.find('div', {'class': 'col_arival'}).string
+                        arrival = [int(t) for t in arrival.split(':')]
+                        break
 
                 if not found:
                     if where == partial_target - 1:
@@ -93,6 +105,10 @@ class PathFinder:
                     else:
                         full_route.append(partial_target - 1)
                         where = partial_target - 1
+                        self.date = current_date
+                        self.last_arrival = datetime.datetime(
+                            self.date.year, self.date.month, self.date.day, arrival[0], arrival[1], 0
+                        )
                 elif partial_target == target_index:
                     where = target_index
                     break
@@ -103,6 +119,20 @@ class PathFinder:
     def build_url(self, source, target, tarif, search_counter):
         url = 'https://cestovnelistky.regiojet.sk/Booking/from/' + str(source) + \
               '/to/' + str(target) + '/tarif/' + tarif + \
-              '/departure/' + self.date + '/retdep/' + self.date + \
+              '/departure/' + self.regio_date() + '/retdep/' + self.regio_date() + \
               '/return/false?' + str(search_counter) + '#search-results'
         return url
+
+    def regio_date(self):
+        date = str(self.date.year)
+        if self.date.month < 10:
+            date += '0'
+        date += str(self.date.month)
+        if self.date.day < 10:
+            date += '0'
+        date += str(self.date.day)
+        return date
+
+    @staticmethod
+    def minutes(difference):
+        return difference.days * 3600 if difference.days > 0 else 0 + (difference.seconds + 59) // 60
