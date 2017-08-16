@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
+import datetime
 import time
 
 import routes
@@ -9,9 +10,22 @@ from dates import Dates
 
 class PathFinder:
 
-    def find_path(self, source, target, date):
-        source_id = routes.STATION_CODES[source]
-        target_id = routes.STATION_CODES[target]
+    def __init__(self, _source, _target, _date, _departure_time, _max_waiting_time):
+        self.source = _source
+        self.target = _target
+        self.date = datetime.datetime(
+            int(_date[6:10]),
+            int(_date[3:5]),
+            int(_date[0:2]),
+            int(_departure_time[0:2]),
+            int(_departure_time[3:]),
+            0
+        )
+        self.max_waiting_time = _max_waiting_time
+
+    def find_path(self):
+        source_id = routes.STATION_CODES[self.source]
+        target_id = routes.STATION_CODES[self.target]
         source_index = None
         target_index = None
         route = None
@@ -29,44 +43,50 @@ class PathFinder:
                     break
             if found_target:
                 break
-        full_route = self.get_changes(route, source_index, target_index, date)
-        if full_route is None:
-            return None
-        full_path = []
-        for station in full_route:
-            full_path.append(routes.CODE_STATIONS[route[station]])
-        return full_path
+        full_route = self.get_changes(route, source_index, target_index)
+        if full_route is not None:
+            full_path = []
+            for station in full_route:
+                full_path.append(routes.CODE_STATIONS[route[station]])
+            return full_path
+        return None
 
     # Returns list of changes (indices of stations on path)
     # If there is no way to get to target, returns None
-    @staticmethod
-    def get_changes(route, source_index, target_index, date):
+    def get_changes(self, route, source_index, target_index):
         full_route = [source_index]
-        dater = Dates()
-        next_day = dater.add_one_day(date, readable=True)
         where = source_index
-        tarif = 'REGULAR'  # TODO let user choose tarif
+        tarif = 'REGULAR'  # TODO let user choose tarif. [UPDATE -> is it really necessary?]
         driver = webdriver.Firefox()  # TODO let user choose browser
         search_counter = 1
+        partial_arrival = None
         while where != target_index:
             for partial_target in range(where + 1, target_index + 1):
-                url = 'https://cestovnelistky.regiojet.sk/Booking/from/' + str(route[where]) +\
-                      '/to/' + str(route[partial_target]) +'/tarif/' + tarif +\
-                      '/departure/' + date + '/retdep/' + date + '/return/false?' + str(search_counter) + '#search-results'
+                url = self.build_url(
+                    source=route[where], target=route[partial_target], tarif=tarif, search_counter=search_counter
+                )
                 search_counter += 1
                 driver.get(url)
-                time.sleep(2)
+                time.sleep(1)
                 results = driver.execute_script("return document.documentElement.innerHTML")
-                end_of_interesting = results.find(next_day)
-                results[end_of_interesting:].replace('free', 'full')
                 soup = BeautifulSoup(results, 'html.parser')
                 found = False
-                full = results.find('full')
-                free = results.find('free')
-                if full == -1 or free < full:
-                    for _ in soup.find_all('div', {'class': 'free'}):
-                        found = True
-                        break
+
+                # full = results.find('full')
+                # free = results.find('free')
+                # if full == -1 or free < full:
+                #     for _ in soup.find_all('div', {'class': 'free'}):
+                #         found = True
+                #         break
+
+                for train in soup.find_all('div', {'class': 'free'}):
+                    departure = train.find('div', {'class': 'col_depart'}).string
+                    if dater.earlier(last_arrival, departure):
+                        waiting_time = dater.difference(last_arrival, departure)
+                        if waiting_time <= self.max_waiting_time:
+                            found = True
+                            partial_arrival = train.find('div', {'class': 'col_arival'}).string
+
                 if not found:
                     if where == partial_target - 1:
                         return None
@@ -79,3 +99,10 @@ class PathFinder:
         full_route.append(target_index)
         driver.close()
         return full_route
+
+    def build_url(self, source, target, tarif, search_counter):
+        url = 'https://cestovnelistky.regiojet.sk/Booking/from/' + str(source) + \
+              '/to/' + str(target) + '/tarif/' + tarif + \
+              '/departure/' + self.date + '/retdep/' + self.date + \
+              '/return/false?' + str(search_counter) + '#search-results'
+        return url
