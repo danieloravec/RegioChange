@@ -46,15 +46,14 @@ class PathFinder:
     def get_changes(self, route, source_index, target_index):
         full_route = [source_index]
         where = source_index
-        tarif = 'REGULAR'  # TODO let user choose tarif. [UPDATE -> is it really necessary?]
-        driver = webdriver.Firefox()  # TODO let user choose browser
+        driver = self.get_browser()
         search_counter = 1
         in_next_day = False  # To know, if we can go to next day, or we are already there and can't go further
 
         while where != target_index:
             for partial_target in range(where + 1, target_index + 1):
                 url = self.build_url(
-                    source=route[where], target=route[partial_target], tarif=tarif, search_counter=search_counter
+                    source=route[where], target=route[partial_target], search_counter=search_counter
                 )
                 search_counter += 1  # URL needs to have this in it
                 driver.get(url)
@@ -128,10 +127,10 @@ class PathFinder:
         driver.close()
         return full_route
 
-    def build_url(self, source, target, tarif, search_counter):
-        url = 'https://cestovnelistky.regiojet.sk/Booking/from/' + str(source) + \
-              '/to/' + str(target) + '/tarif/' + tarif + \
-              '/departure/' + self.regio_date() + '/retdep/' + self.regio_date() + \
+    def build_url(self, source, target, search_counter):
+        url = 'https://cestovnelistky.regiojet.sk/Booking/from/' + str(source) +\
+              '/to/' + str(target) + '/tarif/REGULAR/departure/' +\
+              self.regio_date() + '/retdep/' + self.regio_date() + \
               '/return/false?' + str(search_counter) + '#search-results'
         return url
 
@@ -156,3 +155,26 @@ class PathFinder:
         vehicle_img = vehicle_a.find('img')
         vehicle_title = vehicle_img['title']
         return vehicle_title == 'Vlak'
+
+    @staticmethod
+    def get_browser():
+        try:
+            browser = webdriver.PhantomJS()
+        except:
+            try:
+                browser = webdriver.Firefox()
+            except:
+                try:
+                    browser = webdriver.Chrome()
+                except:
+                    try:
+                        browser = webdriver.Safari()
+                    except:
+                        try:
+                            browser = webdriver.Opera()
+                        except:
+                            raise LookupError(
+                                'Browser not found. Do you have Firefox, Chrome, Safari, Opera or PhantomJS installed?'
+                            )
+        return browser
+
