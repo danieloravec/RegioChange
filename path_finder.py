@@ -8,7 +8,7 @@ import routes
 
 class PathFinder:
 
-    def __init__(self, _source, _target, _date, _departure_time, _max_waiting_time):
+    def __init__(self, _source, _target, _date, _departure_time):
         self.source = _source
         self.target = _target
         self.date = datetime.datetime(
@@ -19,7 +19,6 @@ class PathFinder:
             int(_departure_time[3:]),
             0
         )
-        self.max_waiting_time = _max_waiting_time
         self.last_arrival = None
 
     def find_path(self):
@@ -93,8 +92,8 @@ class PathFinder:
 
                     # We needed to process it partly just to know, if we crossed to next day,
                     # but we are not interested in this train anymore
-                    if train['class'] == 'full':
-                        continue
+                    if 'full' in train['class']:
+                        break
 
                     departure = datetime.datetime(
                         current_date.year,
@@ -104,7 +103,7 @@ class PathFinder:
                         train_departure[1],
                         0
                     )
-                    if (self.last_arrival is None and departure > self.date) or (self.last_arrival is not None
+                    if (self.last_arrival is None and departure >= self.date) or (self.last_arrival is not None
                                                                                  and self.last_arrival <= departure and
                                 self.minutes(departure - self.last_arrival) <= self.max_waiting_time):
                         found = True
