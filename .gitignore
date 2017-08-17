@@ -1,2 +1,7 @@
 # Created by .ignore support plugin (hsz.mobi)
 .idea/
+__pycache__/
+__pycache__/path_finder.cpython-35.pyc
+__pycache__/routes.cpython-35.pyc
+geckodriver.log
+ghostdriver.log
