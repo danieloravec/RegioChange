@@ -98,7 +98,8 @@ class PathFinder:
                         train_departure[1],
                         0
                     )
-                    if 'free' in train['class'] and\
+
+                    if self.is_train(train) and 'free' in train['class'] and\
                             (self.last_arrival is None and departure >= self.date and
                                      self.minutes(departure - self.date) <= routes.MAX_STATION_TIME) or\
                             (self.last_arrival is not None
@@ -147,3 +148,11 @@ class PathFinder:
     @staticmethod
     def minutes(difference):
         return difference.days * 3600 if difference.days > 0 else 0 + (difference.seconds + 59) // 60
+
+    @staticmethod
+    def is_train(train):
+        vehicle_div = train.find('div', {'class': 'col_icon'})
+        vehicle_a = vehicle_div.find('a')
+        vehicle_img = vehicle_a.find('img')
+        vehicle_title = vehicle_img['title']
+        return vehicle_title == 'Vlak'
