@@ -1,3 +1,5 @@
+MAX_STATION_TIME = 15  # Max minutes for train to spend in one station
+
 STATION_CODES = {
     'Třinec centrum, nádr.': 1313142001,
     'Ostrava, Stodolní': 372825009,

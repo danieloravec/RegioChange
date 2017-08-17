@@ -50,7 +50,6 @@ class PathFinder:
         driver = webdriver.Firefox()  # TODO let user choose browser
         search_counter = 1
         in_next_day = False  # To know, if we can go to next day, or we are already there and can't go further
-        prev_train_departure = [self.date.hour, self.date.minute]  # [hours, minutes]
 
         while where != target_index:
             for partial_target in range(where + 1, target_index + 1):
@@ -64,15 +63,16 @@ class PathFinder:
                 soup = BeautifulSoup(results, 'html.parser')
                 found = False
                 next_day = False  # There is a chance of crossing to next day while we are in train
+                prev_train_departure = None  # [hours, minutes]
                 current_date = self.date
 
                 for train in soup.find_all('div', {'class': ['free', 'full']}):
                     departure = train.find('div', {'class': 'col_depart'}).string
                     train_departure = [int(t) for t in departure.split(':')]
                     # Crossing to next day, or just earlier train that day?
-                    if train_departure[0] < prev_train_departure[0] or\
+                    if(prev_train_departure is not None) and (train_departure[0] < prev_train_departure[0] or
                             (train_departure[0] == prev_train_departure[0] and
-                             train_departure[1] < prev_train_departure[1]):
+                             train_departure[1] < prev_train_departure[1])):
                         if next_day:
                             if in_next_day:  # We are already in next day, can't go further
                                 break
@@ -99,8 +99,11 @@ class PathFinder:
                         0
                     )
                     if 'free' in train['class'] and\
-                            (self.last_arrival is None and departure >= self.date) or (self.last_arrival is not None
-                                                                                    and self.last_arrival <= departure):
+                            (self.last_arrival is None and departure >= self.date and
+                                     self.minutes(departure - self.date) <= routes.MAX_STATION_TIME) or\
+                            (self.last_arrival is not None
+                                and self.last_arrival <= departure and
+                                    self.minutes(departure - self.last_arrival) <= routes.MAX_STATION_TIME):
                         found = True
                         arrival = train.find('div', {'class': 'col_arival'}).string
                         arrival = [int(t) for t in arrival.split(':')]
