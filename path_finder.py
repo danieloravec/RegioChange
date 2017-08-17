@@ -98,7 +98,7 @@ class PathFinder:
                         train_departure[1],
                         0
                     )
-                    if 'full' not in train['class'] and\
+                    if 'free' in train['class'] and\
                             (self.last_arrival is None and departure >= self.date) or (self.last_arrival is not None
                                                                                     and self.last_arrival <= departure):
                         found = True
