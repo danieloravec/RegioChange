@@ -1,3 +1,5 @@
+MAX_STATION_TIME = 15  # Max minutes for train to spend in one station
+
 STATION_CODES = {
     'Třinec centrum, nádr.': 1313142001,
     'Ostrava, Stodolní': 372825009,
@@ -64,7 +66,10 @@ CODE_STATIONS = {
 
 ROUTES_DICT = {
     'Praha, hl.n. Košice, žel. st.': 0,
-    'Košice, žel. st. Praha, hl.n.': 1
+    'Košice, žel. st. Praha, hl.n.': 1,
+    'Praha, hl.n. Návsí (Jablunkov), nádr.': 2,
+    'Návsí (Jablunkov), nádr. Praha, hl.n.': 3
+
 }
 
 ALL_ROUTES = [
@@ -112,5 +117,36 @@ ALL_ROUTES = [
         372825004,
         372825002,
         372825000
+    ],
+    # Prague -> Navsi
+    [
+        372825000,
+        372825002,
+        1313142000,
+        372825004,
+        372825005,
+        372825006,
+        372825007,
+        372825010,
+        508812001,
+        1313142001,
+        1313142002,
+        1558071000
+    ],
+    # Navsi -> Prague
+    [
+        1558071000,
+        1313142002,
+        1313142001,
+        508812001,
+        372825010,
+        372825009,
+        372825006,
+        372825005,
+        372825004,
+        1313142000,
+        372825002,
+        372825000
     ]
+
 ]

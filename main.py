@@ -22,7 +22,7 @@ if __name__ == '__main__':
     target = input('Do stanice: ')
     date = input('Dátum (dd/mm/rrrr): ')
     departure_time = input('Čas (hh:mm): ')
-    print('\n------- Daj mi asi 2 minúty. Otvorím prehliadač, môžeš sledovať, kde práve som. -------\n')
+    print('\n------- Idem cestovať... -------\n')
     finder = PathFinder(route_source + ' ' + route_target, source, target, date, departure_time)
     found_route = finder.find_path()
     print_result(found_route)
