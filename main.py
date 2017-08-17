@@ -2,9 +2,11 @@ from path_finder import PathFinder
 
 
 def print_result(route):
+    print('\nVýsledok:\n')
     if route is None:
-        print('Mozes plakat')
+        print('Môžeš plakať')
     else:
+        print('Niečo som našiel: \n')
         first = True
         for station in route:
             if not first:
@@ -13,10 +15,14 @@ def print_result(route):
             print(station)
 
 if __name__ == '__main__':
-    source = input('Zaciatocna stanica: ')
-    target =  input('Konecna stanica: ')
+    print('Informácie o linke')
+    route_source = input('Linka začína v stanici: ')
+    route_target = input('Linka končí v stanici: ')
+    source = input('Ty ideš zo stanice: ')
+    target = input('Do stanice: ')
     date = input('Dátum (dd/mm/rrrr): ')
-    departure_time = input('Čas (hh:mm)')
-    finder = PathFinder(source, target, date, departure_time)
+    departure_time = input('Čas (hh:mm): ')
+    print('\n------- Daj mi asi 2 minúty. Otvorím prehliadač, môžeš sledovať, kde práve som. -------\n')
+    finder = PathFinder(route_source + ' ' + route_target, source, target, date, departure_time)
     found_route = finder.find_path()
     print_result(found_route)
