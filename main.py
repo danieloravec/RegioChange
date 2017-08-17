@@ -16,7 +16,7 @@ if __name__ == '__main__':
     source = input('Zaciatocna stanica: ')
     target =  input('Konecna stanica: ')
     date = input('Dátum (dd/mm/rrrr): ')
-    departure_time = input('Čas (hh:mm)')
+    departure_time = input('Čas (hh:mm): ')
     finder = PathFinder(source, target, date, departure_time)
     found_route = finder.find_path()
     print_result(found_route)

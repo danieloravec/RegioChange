@@ -89,6 +89,7 @@ class PathFinder:
                             in_next_day = True
                         else:
                             next_day = True
+                    prev_train_departure = train_departure
 
                     # We needed to process it partly just to know, if we crossed to next day,
                     # but we are not interested in this train anymore
