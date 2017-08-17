@@ -8,7 +8,8 @@ import routes
 
 class PathFinder:
 
-    def __init__(self, _source, _target, _date, _departure_time):
+    def __init__(self, _route_key, _source, _target, _date, _departure_time):
+        self.route_key = _route_key
         self.source = _source
         self.target = _target
         self.date = datetime.datetime(
@@ -26,21 +27,12 @@ class PathFinder:
         target_id = routes.STATION_CODES[self.target]
         source_index = None
         target_index = None
-        route = None
-        for current_route in routes.ALL_ROUTES:
-            found_source = False
-            found_target = False
-            for index, station in enumerate(current_route):
-                if (not found_source) and (station == source_id):
-                    found_source = True
-                    source_index = index
-                elif found_source and (not found_target) and (station == target_id):
-                    found_target = True
-                    target_index = index
-                    route = current_route
-                    break
-            if found_target:
-                break
+        route = routes.ALL_ROUTES[routes.ROUTES_DICT[self.route_key]]
+        for index, station in enumerate(route):
+            if station == source_id:
+                source_index = index
+            elif station == target_id:
+                target_index = index
         full_route = self.get_changes(route, source_index, target_index)
         if full_route is not None:
             full_path = []
@@ -58,6 +50,8 @@ class PathFinder:
         driver = webdriver.Firefox()  # TODO let user choose browser
         search_counter = 1
         in_next_day = False  # To know, if we can go to next day, or we are already there and can't go further
+        prev_train_departure = [self.date.hour, self.date.minute]  # [hours, minutes]
+
         while where != target_index:
             for partial_target in range(where + 1, target_index + 1):
                 url = self.build_url(
@@ -65,12 +59,11 @@ class PathFinder:
                 )
                 search_counter += 1  # URL needs to have this in it
                 driver.get(url)
-                time.sleep(2)  # We can't sent requests too often
+                time.sleep(2)  # We can't send requests too often
                 results = driver.execute_script("return document.documentElement.innerHTML")  # Dynamic HTML (from JS)
                 soup = BeautifulSoup(results, 'html.parser')
                 found = False
                 next_day = False  # There is a chance of crossing to next day while we are in train
-                prev_train_departure = [0, 0]  # [hours, minutes]
                 current_date = self.date
 
                 for train in soup.find_all('div', {'class': ['free', 'full']}):
@@ -84,17 +77,18 @@ class PathFinder:
                             if in_next_day:  # We are already in next day, can't go further
                                 break
                             current_date += datetime.timedelta(days=1)
-                            current_date.hours = train_departure[0]
-                            current_date.minutes = train_departure[1]
+                            current_date = datetime.datetime(
+                                current_date.year,
+                                current_date.month,
+                                current_date.day,
+                                train_departure[0],
+                                train_departure[1],
+                                0
+                            )
                             in_next_day = True
                         else:
                             next_day = True
                     prev_train_departure = train_departure
-
-                    # We needed to process it partly just to know, if we crossed to next day,
-                    # but we are not interested in this train anymore
-                    if 'full' in train['class']:
-                        break
 
                     departure = datetime.datetime(
                         current_date.year,
@@ -104,9 +98,9 @@ class PathFinder:
                         train_departure[1],
                         0
                     )
-                    if (self.last_arrival is None and departure >= self.date) or (self.last_arrival is not None
-                                                                                 and self.last_arrival <= departure and
-                                self.minutes(departure - self.last_arrival) <= self.max_waiting_time):
+                    if 'full' not in train['class'] and\
+                            (self.last_arrival is None and departure >= self.date) or (self.last_arrival is not None
+                                                                                    and self.last_arrival <= departure):
                         found = True
                         arrival = train.find('div', {'class': 'col_arival'}).string
                         arrival = [int(t) for t in arrival.split(':')]
