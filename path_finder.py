@@ -8,18 +8,11 @@ import routes
 
 class PathFinder:
 
-    def __init__(self, _route_key, _source, _target, _date, _departure_time):
+    def __init__(self, _route_key, _source, _target, _date):
         self.route_key = _route_key
         self.source = _source
         self.target = _target
-        self.date = datetime.datetime(
-            int(_date[6:10]),
-            int(_date[3:5]),
-            int(_date[0:2]),
-            int(_departure_time[0:2]),
-            int(_departure_time[3:]),
-            0
-        )
+        self.date = _date
         self.last_arrival = None
 
     def find_path(self):
@@ -47,6 +40,7 @@ class PathFinder:
         full_route = [source_index]
         where = source_index
         driver = self.get_browser()
+        driver.set_window_size(0, 0)
         search_counter = 1
         in_next_day = False  # To know, if we can go to next day, or we are already there and can't go further
 
@@ -131,7 +125,7 @@ class PathFinder:
     def build_url(self, source, target, search_counter):
         url = 'https://cestovnelistky.regiojet.sk/Booking/from/' + str(source) +\
               '/to/' + str(target) + '/tarif/REGULAR/departure/' +\
-              self.regio_date() + '/retdep/' + self.regio_date() + \
+              self.regio_date() + '/retdep/' + self.regio_date() +\
               '/return/false?' + str(search_counter) + '#search-results'
         return url
 
@@ -174,8 +168,9 @@ class PathFinder:
                         try:
                             browser = webdriver.Opera()
                         except:
-                            raise LookupError(
-                                'Browser not found. Do you have Firefox, Chrome, Safari, Opera or PhantomJS installed?'
+                            raise FileNotFoundError(
+                                'Browser not found. Do you have Firefox, Chrome, Safari, Opera or PhantomJS installed'
+                                'and is at least one of them in PATH variable?'
                             )
         return browser
 
