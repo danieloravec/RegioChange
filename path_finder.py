@@ -47,7 +47,6 @@ class PathFinder:
         full_route = [source_index]
         where = source_index
         driver = self.get_browser()
-        #driver.set_window_size('10', '10')
         search_counter = 1
         in_next_day = False  # To know, if we can go to next day, or we are already there and can't go further
 
@@ -100,11 +99,11 @@ class PathFinder:
                     )
 
                     if self.is_train(train) and 'free' in train['class'] and\
-                            (self.last_arrival is None and departure >= self.date and
-                                     self.minutes(departure - self.date) <= routes.MAX_STATION_TIME) or\
+                            ((self.last_arrival is None and departure >= self.date and
+                                     self.minutes(departure - self.date) <= routes.MAX_STATION_TIME) or
                             (self.last_arrival is not None
                                 and self.last_arrival <= departure and
-                                    self.minutes(departure - self.last_arrival) <= routes.MAX_STATION_TIME):
+                                    self.minutes(departure - self.last_arrival) <= routes.MAX_STATION_TIME)):
                         found = True
                         arrival = train.find('div', {'class': 'col_arival'}).string
                         arrival = [int(t) for t in arrival.split(':')]
@@ -112,6 +111,7 @@ class PathFinder:
 
                 if not found:
                     if where == partial_target - 1:
+                        driver.close()
                         return None
                     else:
                         full_route.append(partial_target - 1)
