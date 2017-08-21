@@ -47,6 +47,7 @@ class PathFinder:
         full_route = [source_index]
         where = source_index
         driver = self.get_browser()
+        #driver.set_window_size('10', '10')
         search_counter = 1
         in_next_day = False  # To know, if we can go to next day, or we are already there and can't go further
 
