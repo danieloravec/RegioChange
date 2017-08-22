@@ -7,7 +7,7 @@ class Visualiser(QtGui.QMainWindow):
 
     def __init__(self):
         super(Visualiser, self).__init__()
-        self.setGeometry(200, 200, 400, 250)
+        self.setGeometry(200, 200, 500, 250)
 
         self.combo_train_number = QtGui.QComboBox(self)
         self.combo_source = QtGui.QComboBox(self)
@@ -16,35 +16,38 @@ class Visualiser(QtGui.QMainWindow):
         self.btn_search = QtGui.QPushButton(self)
         self.label_result = QtGui.QLabel(self)
 
-        self.combo_train_number.move(150, 10)
+        self.combo_train_number.move(200, 10)
         self.label_train_number = QtGui.QLabel(self)
         self.label_train_number.move(10, 10)
+        self.label_train_number.setFixedWidth(250)
         self.label_train_number.setText('Číslo vlaku:')
 
-        self.combo_source.move(150, 50)
+        self.combo_source.move(200, 50)
         self.combo_source.setFixedWidth(250)
         self.label_source = QtGui.QLabel(self)
         self.label_source.move(10, 50)
+        self.label_source.setFixedWidth(250)
         self.label_source.setText('Začiatočná stanica:')
 
-        self.combo_target.move(150, 90)
+        self.combo_target.move(200, 90)
         self.combo_target.setFixedWidth(250)
         self.label_target = QtGui.QLabel(self)
         self.label_target.move(10, 90)
+        self.label_target.setFixedWidth(250)
         self.label_target.setText('Konečná stanica:')
 
-        self.date.move(150, 130)
-        self.date.setFixedWidth(150)
+        self.date.move(200, 130)
+        self.date.setFixedWidth(130)
         self.label_date = QtGui.QLabel(self)
         self.label_date.move(10, 130)
+        self.label_date.setFixedWidth(250)
         self.label_date.setText('Dátum a čas odchodu:')
 
         self.btn_search.move(10, 170)
-        self.btn_search.setFixedWidth(350)
-        self.btn_search.setText('Najdi mi miesto pls uz som si nestihol kupit listok :(')
+        self.btn_search.setText('OK')
 
         self.label_result.move(10, 210)
-        self.label_result.setFixedWidth(500)
+        self.label_result.setFixedWidth(490)
 
         self.select_train()
         self.show()
