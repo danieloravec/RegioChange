@@ -7,7 +7,8 @@ class Visualiser(QtGui.QMainWindow):
 
     def __init__(self):
         super(Visualiser, self).__init__()
-        self.setGeometry(200, 200, 500, 250)
+        self.setGeometry(200, 200, 700, 250)
+        self.setWindowTitle('RegioChange')
 
         self.combo_train_number = QtGui.QComboBox(self)
         self.combo_source = QtGui.QComboBox(self)
@@ -37,7 +38,7 @@ class Visualiser(QtGui.QMainWindow):
         self.label_target.setText('Konečná stanica:')
 
         self.date.move(200, 130)
-        self.date.setFixedWidth(130)
+        self.date.setFixedWidth(150)
         self.label_date = QtGui.QLabel(self)
         self.label_date.move(10, 130)
         self.label_date.setFixedWidth(250)
@@ -47,7 +48,7 @@ class Visualiser(QtGui.QMainWindow):
         self.btn_search.setText('OK')
 
         self.label_result.move(10, 210)
-        self.label_result.setFixedWidth(490)
+        self.label_result.setFixedWidth(690)
 
         self.select_train()
         self.show()
@@ -69,6 +70,8 @@ class Visualiser(QtGui.QMainWindow):
         stations = []
         for code in station_codes:
             stations.append(routes.CODE_STATIONS[code])
+        self.combo_source.clear()
+        self.combo_target.clear()
         self.combo_source.addItems(stations)
         self.combo_target.addItems(stations)
 
