@@ -42,7 +42,7 @@ class Visualiser(QtGui.QMainWindow):
 
         self.date.move(200, 130)
         self.date.setFixedWidth(150)
-        self.date.setDateTime(QtCore.QDateTime.currentDateTime())
+        self.date.setDate(QtCore.QDate.currentDate())
         self.label_date = QtGui.QLabel(self)
         self.label_date.move(10, 130)
         self.label_date.setFixedWidth(250)
@@ -80,11 +80,15 @@ class Visualiser(QtGui.QMainWindow):
         return self.date.dateTime().toPyDateTime()
 
     def print_route(self, route):
-        ans = ''
         if route is None:
-            ans = 'Skús to neskôr'
+            QtGui.QMessageBox.critical(self, 'Výsledok', 'Skús to neskôr', QtGui.QMessageBox.Ok)
+        elif route is False:
+            QtGui.QMessageBox.critical(
+                self, 'Výsledok', 'Medzi týmito stanicami nie je možné cestovať', QtGui.QMessageBox.Ok
+            )
         else:
+            ans = ''
             for idx, station in enumerate(route):
                 ans += str(idx + 1) + ') ' + station + '\n'
-        message_result = QtGui.QMessageBox.information(self, 'Výsledok', ans, QtGui.QMessageBox.Ok)
+            QtGui.QMessageBox.information(self, 'Výsledok', ans, QtGui.QMessageBox.Ok)
 
