@@ -1,4 +1,4 @@
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 
 import routes
 
@@ -7,7 +7,11 @@ class Visualiser(QtGui.QMainWindow):
 
     def __init__(self):
         super(Visualiser, self).__init__()
-        self.setGeometry(200, 200, 700, 250)
+        self.x_coord = 200
+        self.y_coord = 200
+        self.window_width = 470
+        self.window_height = 210
+        self.setGeometry(self.x_coord, self.y_coord, self.window_width, self.window_height)
         self.setWindowTitle('RegioChange')
 
         self.combo_train_number = QtGui.QComboBox(self)
@@ -15,7 +19,6 @@ class Visualiser(QtGui.QMainWindow):
         self.combo_target = QtGui.QComboBox(self)
         self.date = QtGui.QDateTimeEdit(self)
         self.btn_search = QtGui.QPushButton(self)
-        self.label_result = QtGui.QLabel(self)
 
         self.combo_train_number.move(200, 10)
         self.label_train_number = QtGui.QLabel(self)
@@ -39,16 +42,14 @@ class Visualiser(QtGui.QMainWindow):
 
         self.date.move(200, 130)
         self.date.setFixedWidth(150)
+        self.date.setDateTime(QtCore.QDateTime.currentDateTime())
         self.label_date = QtGui.QLabel(self)
         self.label_date.move(10, 130)
         self.label_date.setFixedWidth(250)
         self.label_date.setText('Dátum a čas odchodu:')
 
         self.btn_search.move(10, 170)
-        self.btn_search.setText('OK')
-
-        self.label_result.move(10, 210)
-        self.label_result.setFixedWidth(690)
+        self.btn_search.setText('Hľadať')
 
         self.select_train()
         self.show()
@@ -81,10 +82,9 @@ class Visualiser(QtGui.QMainWindow):
     def print_route(self, route):
         ans = ''
         if route is None:
-            ans = 'Us sa neda najst nic mrzi ma to :('
+            ans = 'Skús to neskôr'
         else:
             for idx, station in enumerate(route):
-                ans += station
-                if idx < len(route) - 1:
-                    ans += '  -->  '
-        self.label_result.setText(ans)
+                ans += str(idx + 1) + ') ' + station + '\n'
+        message_result = QtGui.QMessageBox.information(self, 'Výsledok', ans, QtGui.QMessageBox.Ok)
+

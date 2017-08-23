@@ -42,6 +42,8 @@ class PathFinder:
         arrival_to = [datetime.datetime.now() - datetime.timedelta(days=365) for _ in range(len(route))]
         arrival_to[source_index] = self.date
         driver = self.get_browser()
+        driver.set_window_size(0, 0)
+        driver.set_window_position(200, 200)
         search_counter = 1
         in_next_day = date_incremented = False
         arrival = None
@@ -50,7 +52,7 @@ class PathFinder:
                 url = self.build_url(route[where], route[partial_target], search_counter)
                 search_counter += 1
                 driver.get(url)
-                time.sleep(0.5)
+                time.sleep(1)
                 html = driver.execute_script('return document.documentElement.innerHTML')
                 soup = BeautifulSoup(html, 'html.parser')
                 found = False
