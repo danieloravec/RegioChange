@@ -1,28 +1,25 @@
+import sys
+from PyQt4 import QtGui
+
 from path_finder import PathFinder
+from visual import Visualiser
 
 
-def print_result(route):
-    print('\nVýsledok:\n')
-    if route is None:
-        print('Môžeš plakať')
-    else:
-        print('Niečo som našiel: \n')
-        first = True
-        for station in route:
-            if not first:
-                print(' -> ')
-            first = False
-            print(station)
+def get_route(train_number, source, target, date):
+    finder = PathFinder(train_number, source, target, date)
+    found_route = finder.find_path()
+    visualiser.print_route(found_route)
 
 if __name__ == '__main__':
-    print('Informácie o linke')
-    route_source = input('Linka začína v stanici: ')
-    route_target = input('Linka končí v stanici: ')
-    source = input('Ty ideš zo stanice: ')
-    target = input('Do stanice: ')
-    date = input('Dátum (dd/mm/rrrr): ')
-    departure_time = input('Čas (hh:mm): ')
-    print('\n------- Idem cestovať... -------\n')
-    finder = PathFinder(route_source + ' ' + route_target, source, target, date, departure_time)
-    found_route = finder.find_path()
-    print_result(found_route)
+    app = QtGui.QApplication(sys.argv)
+    visualiser = Visualiser()
+    visualiser.btn_search.clicked.connect(
+        lambda: get_route(
+            visualiser.combo_train_number.currentText(),
+            visualiser.combo_source.currentText(),
+            visualiser.combo_target.currentText(),
+            visualiser.get_datetime()
+        )
+    )
+
+    sys.exit(app.exec_())

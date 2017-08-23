@@ -8,19 +8,12 @@ import routes
 
 class PathFinder:
 
-    def __init__(self, _route_key, _source, _target, _date, _departure_time):
+    def __init__(self, _route_key, _source, _target, _date):
         self.route_key = _route_key
         self.source = _source
         self.target = _target
-        self.date = datetime.datetime(
-            int(_date[6:10]),
-            int(_date[3:5]),
-            int(_date[0:2]),
-            int(_departure_time[0:2]),
-            int(_departure_time[3:]),
-            0
-        )
-        self.last_arrival = None
+        self.date = _date
+        self.last_arrival = _date
 
     def find_path(self):
         source_id = routes.STATION_CODES[self.source]
@@ -46,79 +39,59 @@ class PathFinder:
     def get_changes(self, route, source_index, target_index):
         full_route = [source_index]
         where = source_index
+        arrival_to = [datetime.datetime.now() - datetime.timedelta(days=365) for _ in range(len(route))]
+        arrival_to[source_index] = self.date
         driver = self.get_browser()
+        driver.set_window_size(0, 0)
+        driver.set_window_position(200, 200)
         search_counter = 1
-        in_next_day = False  # To know, if we can go to next day, or we are already there and can't go further
-
+        in_next_day = date_incremented = False
+        arrival = None
         while where != target_index:
             for partial_target in range(where + 1, target_index + 1):
-                url = self.build_url(
-                    source=route[where], target=route[partial_target], search_counter=search_counter
-                )
-                search_counter += 1  # URL needs to have this in it
+                url = self.build_url(route[where], route[partial_target], search_counter)
+                search_counter += 1
                 driver.get(url)
-                time.sleep(2)  # We can't send requests too often
-                results = driver.execute_script("return document.documentElement.innerHTML")  # Dynamic HTML (from JS)
-                soup = BeautifulSoup(results, 'html.parser')
+                time.sleep(1)
+                html = driver.execute_script('return document.documentElement.innerHTML')
+                soup = BeautifulSoup(html, 'html.parser')
                 found = False
-                next_day = False  # There is a chance of crossing to next day while we are in train
-                prev_train_departure = None  # [hours, minutes]
-                current_date = self.date
-
+                prev_train_arrival = arrival
                 for train in soup.find_all('div', {'class': ['free', 'full']}):
-                    departure = train.find('div', {'class': 'col_depart'}).string
-                    train_departure = [int(t) for t in departure.split(':')]
-                    # Crossing to next day, or just earlier train that day?
-                    if(prev_train_departure is not None) and (train_departure[0] < prev_train_departure[0] or
-                            (train_departure[0] == prev_train_departure[0] and
-                             train_departure[1] < prev_train_departure[1])):
-                        if next_day:
-                            if in_next_day:  # We are already in next day, can't go further
-                                break
-                            current_date += datetime.timedelta(days=1)
-                            current_date = datetime.datetime(
-                                current_date.year,
-                                current_date.month,
-                                current_date.day,
-                                train_departure[0],
-                                train_departure[1],
-                                0
-                            )
-                            in_next_day = True
-                        else:
-                            next_day = True
-                    prev_train_departure = train_departure
-
+                    departure = [int(t) for t in train.find('div', {'class': 'col_depart'}).string.split(':')]
+                    arrival = [int(t) for t in train.find('div', {'class': 'col_arival'}).string.split(':')]
+                    # Are we crossing to next day?
+                    if not in_next_day and arrival[0] < departure[0] or \
+                            (arrival[0] == departure[0] and arrival[1] < departure[1]):
+                        in_next_day = True
                     departure = datetime.datetime(
-                        current_date.year,
-                        current_date.month,
-                        current_date.day,
-                        train_departure[0],
-                        train_departure[1],
-                        0
+                        self.date.year, self.date.month, self.date.day, departure[0], departure[1], 0
                     )
-
-                    if self.is_train(train) and 'free' in train['class'] and\
-                            (self.last_arrival is None and departure >= self.date and
-                                     self.minutes(departure - self.date) <= routes.MAX_STATION_TIME) or\
-                            (self.last_arrival is not None
-                                and self.last_arrival <= departure and
-                                    self.minutes(departure - self.last_arrival) <= routes.MAX_STATION_TIME):
+                    arrival = datetime.datetime(
+                        self.date.year, self.date.month, self.date.day, arrival[0], arrival[1], 0
+                    )
+                    if in_next_day and not date_incremented:
+                        arrival += datetime.timedelta(days=1)
+                    time_diff = self.minutes(departure - arrival_to[where])
+                    # I assume that train can stay for 0 minutes. Is it risky?
+                    if self.is_train(train) and 'free' in train['class'] and arrival_to[where] <= departure and \
+                            0 <= time_diff <= routes.MAX_STATION_TIME:
                         found = True
-                        arrival = train.find('div', {'class': 'col_arival'}).string
-                        arrival = [int(t) for t in arrival.split(':')]
+                        break
+                    elif arrival_to[where] <= departure:
                         break
 
                 if not found:
                     if where == partial_target - 1:
+                        driver.close()
                         return None
                     else:
-                        full_route.append(partial_target - 1)
                         where = partial_target - 1
-                        self.date = current_date
-                        self.last_arrival = datetime.datetime(
-                            current_date.year, current_date.month, current_date.day, arrival[0], arrival[1], 0
-                        )
+                        full_route.append(partial_target - 1)
+                        if in_next_day:
+                            date_incremented = True
+                        self.date = prev_train_arrival
+                        arrival_to[partial_target - 1] = self.date  # TODO do we need arrival_to and not only self.date?
                         break
                 elif partial_target == target_index:
                     where = target_index
@@ -130,7 +103,7 @@ class PathFinder:
     def build_url(self, source, target, search_counter):
         url = 'https://cestovnelistky.regiojet.sk/Booking/from/' + str(source) +\
               '/to/' + str(target) + '/tarif/REGULAR/departure/' +\
-              self.regio_date() + '/retdep/' + self.regio_date() + \
+              self.regio_date() + '/retdep/' + self.regio_date() +\
               '/return/false?' + str(search_counter) + '#search-results'
         return url
 
@@ -151,10 +124,8 @@ class PathFinder:
     @staticmethod
     def is_train(train):
         vehicle_div = train.find('div', {'class': 'col_icon'})
-        vehicle_a = vehicle_div.find('a')
-        vehicle_img = vehicle_a.find('img')
-        vehicle_title = vehicle_img['title']
-        return vehicle_title == 'Vlak'
+        vehicle_img = vehicle_div.find('img')
+        return vehicle_img['title'] == 'Vlak'
 
     @staticmethod
     def get_browser():
@@ -173,8 +144,9 @@ class PathFinder:
                         try:
                             browser = webdriver.Opera()
                         except:
-                            raise LookupError(
-                                'Browser not found. Do you have Firefox, Chrome, Safari, Opera or PhantomJS installed?'
+                            raise FileNotFoundError(
+                                'Browser not found. Do you have Firefox, Chrome, Safari, Opera or PhantomJS installed'
+                                'and is at least one of them in PATH variable?'
                             )
         return browser
 
