@@ -26,6 +26,8 @@ class PathFinder:
                 source_index = index
             elif station == target_id:
                 target_index = index
+        if source_index is None or target_index is None:
+            return False
         full_route = self.get_changes(route, source_index, target_index)
         if full_route is not None:
             full_path = []
@@ -39,7 +41,7 @@ class PathFinder:
     def get_changes(self, route, source_index, target_index):
         full_route = [source_index]
         where = source_index
-        arrival_to = [datetime.datetime.now() - datetime.timedelta(days=365) for _ in range(len(route))]
+        arrival_to = [datetime.datetime(2017, 1, 1, 0, 0, 0) for _ in range(len(route))]
         arrival_to[source_index] = self.date
         driver = self.get_browser()
         driver.set_window_size(0, 0)
@@ -149,4 +151,3 @@ class PathFinder:
                                 'and is at least one of them in PATH variable?'
                             )
         return browser
-
