@@ -1,9 +1,11 @@
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.common.exceptions import WebDriverException
 import datetime
 import time
 
 import routes
+import signals
 
 
 class PathFinder:
@@ -16,8 +18,15 @@ class PathFinder:
         self.last_arrival = _date
 
     def find_path(self):
-        source_id = routes.STATION_CODES[self.source]
-        target_id = routes.STATION_CODES[self.target]
+        if self.route_key is '':
+            return signals.TRAIN_NOT_FOUND
+        try:
+            source_id = routes.STATION_CODES[self.source]
+            target_id = routes.STATION_CODES[self.target]
+        except KeyError:
+            return signals.IMPOSSIBLE_ROUTE
+        if self.date < datetime.datetime.now():
+            return signals.DATE_IN_PAST
         source_index = None
         target_index = None
         route = routes.ALL_ROUTES[routes.ROUTES_DICT[self.route_key]]
@@ -27,8 +36,14 @@ class PathFinder:
             elif station == target_id:
                 target_index = index
         if source_index is None or target_index is None:
-            return False
+            return signals.IMPOSSIBLE_ROUTE
+        elif source_index >= target_index:
+            return signals.WRONG_DIRECTION
         full_route = self.get_changes(route, source_index, target_index)
+        if full_route is signals.BROWSER_CLOSED_UNEXPECTEDLY:
+            return signals.BROWSER_CLOSED_UNEXPECTEDLY
+        if full_route is -1:
+            return -1
         if full_route is not None:
             full_path = []
             for station in full_route:
@@ -43,63 +58,68 @@ class PathFinder:
         where = source_index
         arrival_to = [datetime.datetime(2017, 1, 1, 0, 0, 0) for _ in range(len(route))]
         arrival_to[source_index] = self.date
-        driver = self.get_browser()
-        driver.set_window_size(0, 0)
-        driver.set_window_position(200, 200)
-        search_counter = 1
-        in_next_day = date_incremented = False
-        arrival = None
-        while where != target_index:
-            for partial_target in range(where + 1, target_index + 1):
-                url = self.build_url(route[where], route[partial_target], search_counter)
-                search_counter += 1
-                driver.get(url)
-                time.sleep(1)
-                html = driver.execute_script('return document.documentElement.innerHTML')
-                soup = BeautifulSoup(html, 'html.parser')
-                found = False
-                prev_train_arrival = arrival
-                for train in soup.find_all('div', {'class': ['free', 'full']}):
-                    departure = [int(t) for t in train.find('div', {'class': 'col_depart'}).string.split(':')]
-                    arrival = [int(t) for t in train.find('div', {'class': 'col_arival'}).string.split(':')]
-                    # Are we crossing to next day?
-                    if not in_next_day and arrival[0] < departure[0] or \
-                            (arrival[0] == departure[0] and arrival[1] < departure[1]):
-                        in_next_day = True
-                    departure = datetime.datetime(
-                        self.date.year, self.date.month, self.date.day, departure[0], departure[1], 0
-                    )
-                    arrival = datetime.datetime(
-                        self.date.year, self.date.month, self.date.day, arrival[0], arrival[1], 0
-                    )
-                    if in_next_day and not date_incremented:
-                        arrival += datetime.timedelta(days=1)
-                    time_diff = self.minutes(departure - arrival_to[where])
-                    # I assume that train can stay for 0 minutes. Is it risky?
-                    if self.is_train(train) and 'free' in train['class'] and arrival_to[where] <= departure and \
-                            0 <= time_diff <= routes.MAX_STATION_TIME:
-                        found = True
-                        break
-                    elif arrival_to[where] <= departure:
-                        break
+        try:
+            driver = self.get_browser()
+            if driver is signals.BROWSER_NOT_FOUND:
+                return signals.BROWSER_NOT_FOUND
+            driver.set_window_size(0, 0)
+            driver.set_window_position(200, 200)
+            search_counter = 1
+            in_next_day = date_incremented = False
+            arrival = None
+            while where is not target_index:
+                for partial_target in range(where + 1, target_index + 1):
+                    url = self.build_url(route[where], route[partial_target], search_counter)
+                    search_counter += 1
+                    driver.get(url)
+                    time.sleep(1)
+                    html = driver.execute_script('return document.documentElement.innerHTML')
+                    soup = BeautifulSoup(html, 'html.parser')
+                    found = False
+                    prev_train_arrival = arrival
+                    for train in soup.find_all('div', {'class': ['free', 'full']}):
+                        departure = [int(t) for t in train.find('div', {'class': 'col_depart'}).string.split(':')]
+                        arrival = [int(t) for t in train.find('div', {'class': 'col_arival'}).string.split(':')]
+                        # Are we crossing to next day?
+                        if not in_next_day and arrival[0] < departure[0] or \
+                                (arrival[0] == departure[0] and arrival[1] < departure[1]):
+                            in_next_day = True
+                        departure = datetime.datetime(
+                            self.date.year, self.date.month, self.date.day, departure[0], departure[1], 0
+                        )
+                        arrival = datetime.datetime(
+                            self.date.year, self.date.month, self.date.day, arrival[0], arrival[1], 0
+                        )
+                        if in_next_day and not date_incremented:
+                            arrival += datetime.timedelta(days=1)
+                        time_diff = self.minutes(departure - arrival_to[where])
+                        # I assume that train can stay for 0 minutes. Is it risky?
+                        if self.is_train(train) and 'free' in train['class'] and arrival_to[where] <= departure and \
+                                0 <= time_diff <= routes.MAX_STATION_TIME:
+                            found = True
+                            break
+                        elif arrival_to[where] <= departure:
+                            break
 
-                if not found:
-                    if where == partial_target - 1:
-                        driver.close()
-                        return None
-                    else:
-                        where = partial_target - 1
-                        full_route.append(partial_target - 1)
-                        if in_next_day:
-                            date_incremented = True
-                        self.date = prev_train_arrival
-                        arrival_to[partial_target - 1] = self.date  # TODO do we need arrival_to and not only self.date?
+                    if not found:
+                        if where == partial_target - 1:
+                            driver.close()
+                            return None
+                        else:
+                            where = partial_target - 1
+                            full_route.append(partial_target - 1)
+                            if in_next_day:
+                                date_incremented = True
+                            self.date = prev_train_arrival
+                            arrival_to[partial_target - 1] = self.date  # TODO do we need arrival_to and not only self.date?
+                            break
+                    elif partial_target == target_index:
+                        where = target_index
                         break
-                elif partial_target == target_index:
-                    where = target_index
-                    break
-        full_route.append(target_index)
-        driver.close()
+            full_route.append(target_index)
+            driver.close()
+        except WebDriverException:
+            return signals.BROWSER_CLOSED_UNEXPECTEDLY
         return full_route
 
     def build_url(self, source, target, search_counter):
@@ -146,8 +166,5 @@ class PathFinder:
                         try:
                             browser = webdriver.Opera()
                         except:
-                            raise FileNotFoundError(
-                                'Browser not found. Do you have Firefox, Chrome, Safari, Opera or PhantomJS installed'
-                                'and is at least one of them in PATH variable?'
-                            )
+                            return signals.BROWSER_NOT_FOUND
         return browser

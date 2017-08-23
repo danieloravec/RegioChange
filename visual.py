@@ -1,6 +1,7 @@
 from PyQt4 import QtGui, QtCore
 
 import routes
+import signals
 
 
 class Visualiser(QtGui.QMainWindow):
@@ -80,15 +81,29 @@ class Visualiser(QtGui.QMainWindow):
         return self.date.dateTime().toPyDateTime()
 
     def print_route(self, route):
-        if route is None:
-            QtGui.QMessageBox.critical(self, 'Výsledok', 'Skús to neskôr', QtGui.QMessageBox.Ok)
-        elif route is False:
-            QtGui.QMessageBox.critical(
-                self, 'Výsledok', 'Medzi týmito stanicami nie je možné cestovať', QtGui.QMessageBox.Ok
-            )
+        err_message = None
+        if route is signals.TRAIN_NOT_FOUND:
+            err_message = 'Neviem nájsť zvolený vlak'
+        elif route is signals.IMPOSSIBLE_ROUTE:
+            err_message = 'Týmto vlakom nie je možné cestovať medzi zvolenými stanicami'
+        elif route is signals.BROWSER_NOT_FOUND:
+            err_message = 'Nenašiel som webový prehliadač. Ak máš nainštalovaný jeden z prehliadačov Firefox, ' \
+                           'Chrome, Safari, Opera, alebo PhantomJS, uisti sa, že sú v systémovej premennej PATH'
+        elif route is signals.WRONG_DIRECTION:
+            err_message = 'Tento vlak medzi zvolenými stanicami premáva v opačnom smere'
+        elif route is signals.DATE_IN_PAST:
+            err_message = 'Tento vlak si už išiel'
+        elif route is signals.BROWSER_CLOSED_UNEXPECTEDLY:
+            err_message = 'Prehliadač sa nečakane zatvoril'
+
+        if err_message is None:
+            if route is None:
+                QtGui.QMessageBox.critical(self, 'Výsledok', 'Skús to neskôr', QtGui.QMessageBox.Ok)
+            else:
+                ans = ''
+                for idx, station in enumerate(route):
+                    ans += str(idx + 1) + ') ' + station + '\n'
+                QtGui.QMessageBox.information(self, 'Výsledok', ans, QtGui.QMessageBox.Ok)
         else:
-            ans = ''
-            for idx, station in enumerate(route):
-                ans += str(idx + 1) + ') ' + station + '\n'
-            QtGui.QMessageBox.information(self, 'Výsledok', ans, QtGui.QMessageBox.Ok)
+            QtGui.QMessageBox.critical(self, 'Chyba', err_message, QtGui.QMessageBox.Ok)
 
